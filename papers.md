@@ -4,6 +4,7 @@
 
 layout: post
 ---
+- "Challenges in end-to-end neural scientific document OCR", Yuntian Deng, David Rosenberg and Gideon Mann, \[[PDF](https://drive.google.com/file/d/12gxFrRKUMPULTR28dvzhoNS0IOqVVPFg/view)\] 2019
 
 - "Improving Grey-Box Fuzzing by Modeling Program Behavior" Siddharth Karamcheti, Gideon Mann, David Rosenberg, arxiv, 2018. \[[pdf](https://arxiv.org/abs/1811.08973)\]
 
@@ -12,8 +13,6 @@ layout: post
 - "Challenges in end-to-end neural scientific table recogniton", Y Deng, D Rosenberg, G Mann. ICDAR, 2019. \[[pdf](https://ieeexplore.ieee.org/abstract/document/8978078)\]
 
 - Augmented Programming: at ODSC \[[slides](https://docs.google.com/presentation/d/1jLfUWiIwO_BR2WqXPMiat0g1GMHL1Qwp_KlcfQw0Uvc/edit#slide=id.g6b05bbe9a3_0_186)\]
-
-- "Challenges in end-to-end neural scientific document OCR", Yuntian Deng, David Rosenberg and Gideon Mann, \[[PDF](https://drive.google.com/file/d/12gxFrRKUMPULTR28dvzhoNS0IOqVVPFg/view)\] 2019
 
 - EMNLP 2018 : Keynote Day 2 \[[Slides](https://2018.emnlp.org/downloads/keynote-slides/GideonMann.pdf)\] \[[Video](https://vimeo.com/305658007)\]
 
