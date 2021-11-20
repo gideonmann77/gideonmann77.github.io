@@ -12,5 +12,3 @@ layout: post
 - [Papers and talks](papers.md)
 - [coLaboratory](https://colaboratory.jupyter.org/welcome/) (now [colab.research.google.com](https://colab.research.google.com) )
 - [Medium](https://medium.com/@gideonmann)
-
-
