@@ -16,3 +16,5 @@ Some particular areas of interest:
 - Fine-tuning models for downstream tasks.
 - Methods for efficiently running the models.
 - Training with differential privacy.
+
+Please send email to gmann16@bloomberg.net directly if interested.
