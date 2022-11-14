@@ -1,3 +1,6 @@
+---
+layout: post
+---
 # Summer Internship / Bloomberg Machine Learning Product and Research
 Language modeling has been around for decades, but it has only been within the past few years that large (causal) language models have demonstrated generalization abilities that enable direct application to core problems in natural language processing.
 
