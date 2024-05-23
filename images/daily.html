@@ -25,10 +25,15 @@
                 // }, 3600000);
             }, 5000);
         }
-        window.onload = refreshPage;
+        window.onload = function() {
+            // Append a timestamp to the image URL to prevent caching
+            var img = document.getElementById("dynamic-image");
+            img.src = "image.png?t=" + new Date().getTime();
+            refreshPage();
+        }
     </script>
 </head>
 <body>
-    <img src="daily.png" alt="Static Image">
+    <img id="dynamic-image" src="daily.png" alt="Static Image">
 </body>
 </html>
