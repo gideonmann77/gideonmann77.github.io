@@ -21,19 +21,20 @@
         function refreshPage() {
             // Refresh the page every hour (3600000 milliseconds)
             setTimeout(function() {
-                location.reload();
-                // }, 3600000);
-            }, 5000);
+                var img = document.getElementById("dynamic-image");
+                var newImg = new Image();
+                newImg.src = "daily.png?t=" + new Date().getTime();
+                newImg.onload = function() {
+                    img.src = newImg.src;
+                }
+            }, 3600000);
         }
         window.onload = function() {
-            // Append a timestamp to the image URL to prevent caching
-            var img = document.getElementById("dynamic-image");
-            img.src = "daily.png?t=" + new Date().getTime();
             refreshPage();
         }
     </script>
-</head>
+    </head>
 <body>
-    <img id="dynamic-image" src="daily.png" alt="Static Image">
+    <img id="dynamic-image" src="daily.png?t=" + new Date().getTime() alt="Static Image">
 </body>
 </html>
