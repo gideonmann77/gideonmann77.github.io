@@ -28,7 +28,7 @@
         window.onload = function() {
             // Append a timestamp to the image URL to prevent caching
             var img = document.getElementById("dynamic-image");
-            img.src = "image.png?t=" + new Date().getTime();
+            img.src = "daily.png?t=" + new Date().getTime();
             refreshPage();
         }
     </script>
