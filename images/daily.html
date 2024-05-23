@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static Image</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+    <script>
+        function refreshPage() {
+            // Refresh the page every hour (3600000 milliseconds)
+            setTimeout(function() {
+                location.reload();
+                // }, 3600000);
+            }, 5000);
+        }
+        window.onload = refreshPage;
+    </script>
+</head>
+<body>
+    <img src="daily.png" alt="Static Image">
+</body>
+</html>
