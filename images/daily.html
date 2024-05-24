@@ -21,16 +21,16 @@
         function refreshPage() {
             // Refresh the page every hour (3600000 milliseconds)
             setTimeout(function() {
-                var img = document.getElementById("dynamic-image");
-                var newImg = new Image();
-                newImg.src = "daily.png?t=" + new Date().getTime();
-                newImg.onload = function() {
-                    img.src = newImg.src;
-                }
-                location.reload()
+                location.reload();
+                // }, 3600000);
             }, 5000);
         }
-        window.onload = refreshPage;
+        window.onload = function() {
+            // Append a timestamp to the image URL to prevent caching
+            var img = document.getElementById("dynamic-image");
+            img.src = "daily.png?t=" + new Date().getTime();
+            refreshPage();
+        }
     </script>
     </head>
 <body>
