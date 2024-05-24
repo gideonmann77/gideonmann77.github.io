@@ -27,11 +27,10 @@
                 newImg.onload = function() {
                     img.src = newImg.src;
                 }
-            }, 1000);
+                location.reload()
+            }, 5000);
         }
-        window.onload = function() {
-            refreshPage();
-        }
+        window.onload = refreshPage;
     </script>
     </head>
 <body>
