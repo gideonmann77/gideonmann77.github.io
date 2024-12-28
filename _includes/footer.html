@@ -1,17 +1,27 @@
-<footer>
-    <ul>
-      {% if site.twitter_username %}
-        <li><a href="https://twitter.com/{{ site.twitter_username }}" target="_blank">Twitter</a></li>
-      {% endif %}
-      {% if site.github_username %}
-        <li><a href="https://github.com/{{ site.github_username }}" target="_blank">GitHub</a></li>
-      {% endif %}
-      {% if site.google_scholar %}
-        <li><a href="{{ site.google_scholar }}" target="_blank">Google Scholar</a></li>
-      {% endif %}
-      {% if site.linkedin %}
-        <li><a href="{{ site.linkedin }}" target="_blank">LinkedIn</a></li>
-      {% endif %}
-    </ul>
-  </footer>
-  
+<footer style="text-align: center; padding: 20px 0;">
+  <div style="display: inline-flex; gap: 15px; align-items: center;">
+    {% if site.twitter_username %}
+      <a href="https://twitter.com/{{ site.twitter_username }}" target="_blank" style="text-decoration: none; color: inherit;">
+        <i class="bi bi-twitter" style="font-size: 1.5rem;"></i>
+      </a>
+    {% endif %}
+    {% if site.github_username %}
+      <a href="https://github.com/{{ site.github_username }}" target="_blank" style="text-decoration: none; color: inherit;">
+        <i class="bi bi-github" style="font-size: 1.5rem;"></i>
+      </a>
+    {% endif %}
+    {% if site.google_scholar %}
+      <a href="{{ site.google_scholar }}" target="_blank" style="text-decoration: none; color: inherit;">
+        <i class="bi bi-book" style="font-size: 1.5rem;"></i>
+      </a>
+    {% endif %}
+    {% if site.linkedin %}
+      <a href="{{ site.linkedin }}" target="_blank" style="text-decoration: none; color: inherit;">
+        <i class="bi bi-linkedin" style="font-size: 1.5rem;"></i>
+      </a>
+    {% endif %}
+  </div>
+</footer>
+
+<!-- Add Bootstrap Icons CSS to your HTML head -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css">
