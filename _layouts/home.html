@@ -81,6 +81,10 @@
   // Icon horizontal spacing
   var ICON_GAP = 140; // px between icon centers
 
+  // Pause before waves begin, then ease in
+  var WAVE_DELAY    = 4.0;  // seconds of stillness before waves start
+  var WAVE_FADE_IN  = 2.0;  // seconds to ramp wave amplitude from 0 to full
+
   // =========================================================================
   // SIMULATION
   // =========================================================================
@@ -98,7 +102,7 @@
     var vh = window.innerHeight;
     var totalWidth = (iconEls.length - 1) * ICON_GAP;
     var startX = (vw - totalWidth) / 2;
-    var startY = vh * 0.45; // start near vertical center
+    var oceanSurface = vh * OCEAN_Y;
 
     icons = iconEls.map(function(el, i) {
       var bx = startX + i * ICON_GAP;
@@ -106,10 +110,10 @@
         el: el,
         baseX: bx,
         x: bx,
-        y: startY,
+        y: oceanSurface,
         vx: 0,
         vy: 0,
-        floating: false,
+        floating: true,
         settled: false,
       };
     });
@@ -118,6 +122,15 @@
   // All wave functions take (t, x) — same wave field sampled at different positions.
   // phase = 2π * (freq * t - dir * x / wavelength)
   // dir = +1 → wave moves right, dir = -1 → wave moves left
+
+  // Returns wave amplitude multiplier: 0 during delay, eases to 1 over fade-in.
+  function waveAmp(t) {
+    if (t < WAVE_DELAY) return 0;
+    var elapsed = t - WAVE_DELAY;
+    if (elapsed >= WAVE_FADE_IN) return 1;
+    // Smooth ease-in (cosine)
+    return 0.5 - 0.5 * Math.cos(Math.PI * elapsed / WAVE_FADE_IN);
+  }
 
   // Returns wave direction as a smooth value between -1 and +1.
   // Holds at ±1 for DIRECTION_PERIOD, transitions over DIRECTION_TRANSITION.
@@ -142,16 +155,20 @@
   }
 
   function waveY(t, x) {
+    var a = waveAmp(t);
+    if (a === 0) return 0;
     var dir = waveDir(t);
     var y = 0;
     for (var j = 0; j < WAVES.length; j++) {
       var w = WAVES[j];
       y += w.amp * Math.sin(2 * Math.PI * (w.freq * t - dir * x / w.wavelength));
     }
-    return y;
+    return y * a;
   }
 
   function waveDriftX(t, x) {
+    var a = waveAmp(t);
+    if (a === 0) return 0;
     var dir = waveDir(t);
     var dx = 0;
     for (var j = 0; j < WAVES.length; j++) {
@@ -159,10 +176,12 @@
       dx += w.amp * DRIFT_RATIO * dir *
             Math.cos(2 * Math.PI * (w.freq * t - dir * x / w.wavelength));
     }
-    return dx;
+    return dx * a;
   }
 
   function waveSlope(t, x) {
+    var a = waveAmp(t);
+    if (a === 0) return 0;
     var dir = waveDir(t);
     var s = 0;
     for (var j = 0; j < WAVES.length; j++) {
@@ -170,7 +189,7 @@
       s += w.amp * (-2 * Math.PI * dir / w.wavelength) *
            Math.cos(2 * Math.PI * (w.freq * t - dir * x / w.wavelength));
     }
-    return s;
+    return s * a;
   }
 
   var lastTime = null;
