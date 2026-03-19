@@ -14,10 +14,14 @@
       font-size: 2.2rem;
       display: inline-block;
       position: absolute;
-      cursor: pointer;
+      cursor: grab;
       will-change: transform;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
     .icon-link:hover { color: #555; }
+    .icon-link.dragging { cursor: grabbing; }
   </style>
 </head>
 <body>
@@ -43,47 +47,51 @@
   // TUNABLE PARAMETERS — adjust these to change the feel
   // =========================================================================
 
-  var GRAVITY       = 900;    // px/s² — how fast icons accelerate downward
+  // Gravity (used for drag-drop splash)
+  var GRAVITY       = 900;    // px/s²
   var OCEAN_Y       = 0.82;   // fraction of viewport height where ocean surface sits
   var DAMPING       = 0.3;    // velocity multiplier on water impact (0 = dead stop, 1 = full bounce)
-  var SETTLE_SPEED  = 3.0;    // how quickly icons settle onto the wave surface (higher = faster)
+  var SETTLE_SPEED  = 3.0;    // how quickly icons settle onto the wave surface
 
-  // Traveling wave components — each wave moves across the screen spatially.
-  // All icons ride the SAME waves; their phase differs only by x-position.
-  // freq: temporal frequency (cycles/sec), wavelength: spatial (px),
-  // amp: vertical displacement (px), speed derived as freq * wavelength
+  // Beach-realistic traveling wave components.
+  // Mild day: waves every 5-12 seconds, gentle amplitude.
+  // All icons ride the SAME wave field sampled at their x-position.
   var WAVES = [
-    { freq: 0.15,  wavelength: 800, amp: 12 },   // long slow swell
-    { freq: 0.35,  wavelength: 400, amp: 6  },   // medium wave
-    { freq: 0.65,  wavelength: 200, amp: 3  },   // short chop
-    { freq: 1.1,   wavelength: 120, amp: 1.5 },  // fine ripple
+    { freq: 0.08,   wavelength: 1200, amp: 12 },  // background swell (12.5s period)
+    { freq: 0.125,  wavelength: 800,  amp: 20 },  // primary swell (8s period)
+    { freq: 0.2,    wavelength: 500,  amp: 5  },  // light chop (5s period)
   ];
 
+  // Wave sets — slow amplitude envelope so wave height varies over time,
+  // like groups of larger waves arriving then calming down.
+  var SET_FREQ   = 0.02;   // cycles/sec (~50s per full set cycle)
+  var SET_DEPTH  = 0.4;    // min amplitude fraction (0.4 = varies 40%-100%)
+
   // Horizontal drift amplitude relative to vertical amplitude.
-  // In real water, surface particles move in circles — horizontal motion
-  // is roughly proportional to vertical motion.
-  var DRIFT_RATIO = 5.0;  // px horizontal per px vertical amplitude
+  var DRIFT_RATIO = 5.0;
 
-  var ICON_MARGIN = 32; // px — minimum distance from screen edge
-  var ICON_SIZE   = 36; // px — effective icon diameter for collision
-  var COLLISION_BOUNCE = 0.5; // elasticity of icon-to-icon collisions (0-1)
-  var WAVE_FORCE  = 1.2;  // how strongly waves pull icons laterally (spring constant)
-  var DRAG        = 2.0;  // water drag on horizontal movement (friction)
+  var ICON_MARGIN = 32;
+  var ICON_SIZE   = 36;
+  var COLLISION_BOUNCE = 0.5;
+  var WAVE_FORCE  = 1.2;
+  var DRAG        = 2.0;
 
-  // Rocking: icons tilt proportionally to the wave slope at their position
-  var ROCK_SCALE  = 2.5;  // degrees per unit slope
+  // Rocking: icons tilt proportionally to the wave slope
+  var ROCK_SCALE  = 2.5;
 
-  // Wave direction: waves travel in one direction for DIRECTION_PERIOD seconds,
-  // then smoothly reverse over DIRECTION_TRANSITION seconds.
-  var DIRECTION_PERIOD     = 30;  // seconds per direction
-  var DIRECTION_TRANSITION = 3;   // seconds to smoothly blend between directions
+  // Wave direction reversal
+  var DIRECTION_PERIOD     = 30;
+  var DIRECTION_TRANSITION = 3;
 
   // Icon horizontal spacing
-  var ICON_GAP = 140; // px between icon centers
+  var ICON_GAP = 140;
 
   // Pause before waves begin, then ease in
-  var WAVE_DELAY    = 4.0;  // seconds of stillness before waves start
-  var WAVE_FADE_IN  = 2.0;  // seconds to ramp wave amplitude from 0 to full
+  var WAVE_DELAY    = 0;
+  var WAVE_FADE_IN  = 3.0;
+
+  // Drag-and-drop
+  var DRAG_THRESHOLD = 5; // px movement before it counts as drag (vs click)
 
   // =========================================================================
   // SIMULATION
@@ -115,37 +123,41 @@
         vy: 0,
         floating: true,
         settled: false,
+        dragging: false,
       };
     });
   }
 
-  // All wave functions take (t, x) — same wave field sampled at different positions.
-  // phase = 2π * (freq * t - dir * x / wavelength)
-  // dir = +1 → wave moves right, dir = -1 → wave moves left
+  // --- Wave functions ---
 
-  // Returns wave amplitude multiplier: 0 during delay, eases to 1 over fade-in.
+  // Wave set envelope: slow modulation of wave amplitude.
+  // Uses -cos so it starts at the MINIMUM (calm) and builds up.
+  function waveSetEnvelope(t) {
+    var s = -Math.cos(2 * Math.PI * SET_FREQ * t);
+    // Map [-1,1] to [SET_DEPTH, 1] — starts at SET_DEPTH (calm)
+    return SET_DEPTH + (1 - SET_DEPTH) * (0.5 + 0.5 * s);
+  }
+
+  // Amplitude multiplier: delay + fade-in + wave sets
   function waveAmp(t) {
     if (t < WAVE_DELAY) return 0;
     var elapsed = t - WAVE_DELAY;
-    if (elapsed >= WAVE_FADE_IN) return 1;
-    // Smooth ease-in (cosine)
-    return 0.5 - 0.5 * Math.cos(Math.PI * elapsed / WAVE_FADE_IN);
+    var fadeIn = 1;
+    if (elapsed < WAVE_FADE_IN) {
+      fadeIn = 0.5 - 0.5 * Math.cos(Math.PI * elapsed / WAVE_FADE_IN);
+    }
+    return fadeIn * waveSetEnvelope(t);
   }
 
-  // Returns wave direction as a smooth value between -1 and +1.
-  // Holds at ±1 for DIRECTION_PERIOD, transitions over DIRECTION_TRANSITION.
+  // Wave direction: smooth reversal between +1 and -1
   function waveDir(t) {
     var cycle = 2 * DIRECTION_PERIOD + 2 * DIRECTION_TRANSITION;
     var phase = t % cycle;
-    // 0 → period: moving right (+1)
-    // period → period+trans: transitioning to left
-    // period+trans → 2*period+trans: moving left (-1)
-    // 2*period+trans → cycle: transitioning to right
     if (phase < DIRECTION_PERIOD) {
       return 1;
     } else if (phase < DIRECTION_PERIOD + DIRECTION_TRANSITION) {
       var p = (phase - DIRECTION_PERIOD) / DIRECTION_TRANSITION;
-      return 1 - 2 * (0.5 - 0.5 * Math.cos(Math.PI * p)); // smooth cosine ease
+      return 1 - 2 * (0.5 - 0.5 * Math.cos(Math.PI * p));
     } else if (phase < 2 * DIRECTION_PERIOD + DIRECTION_TRANSITION) {
       return -1;
     } else {
@@ -192,11 +204,105 @@
     return s * a;
   }
 
+  // --- Drag and drop ---
+
+  var dragIcon = null;
+  var dragStartX = 0, dragStartY = 0;
+  var dragMoved = false;
+
+  function getPointerPos(e) {
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  function onPointerDown(e) {
+    // Find which icon was clicked
+    var target = e.currentTarget;
+    for (var i = 0; i < icons.length; i++) {
+      if (icons[i].el === target) {
+        dragIcon = icons[i];
+        break;
+      }
+    }
+    if (!dragIcon) return;
+
+    var pos = getPointerPos(e);
+    dragStartX = pos.x;
+    dragStartY = pos.y;
+    dragMoved = false;
+    dragIcon.dragging = true;
+    dragIcon.vx = 0;
+    dragIcon.vy = 0;
+    dragIcon.el.classList.add('dragging');
+
+    e.preventDefault(); // prevent text selection and link navigation during drag
+  }
+
+  function onPointerMove(e) {
+    if (!dragIcon) return;
+    var pos = getPointerPos(e);
+    var dx = pos.x - dragStartX;
+    var dy = pos.y - dragStartY;
+
+    if (!dragMoved && Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+      dragMoved = true;
+    }
+
+    if (dragMoved) {
+      dragIcon.x = pos.x;
+      dragIcon.y = pos.y;
+    }
+  }
+
+  function onPointerUp(e) {
+    if (!dragIcon) return;
+    dragIcon.el.classList.remove('dragging');
+
+    if (!dragMoved) {
+      // It was a click, not a drag — navigate to the link
+      dragIcon.dragging = false;
+      var href = dragIcon.el.getAttribute('href');
+      if (href) {
+        window.open(href, '_blank', 'noopener');
+      }
+      dragIcon = null;
+      return;
+    }
+
+    // Released after drag — drop with gravity from wherever it is now
+    dragIcon.baseX = dragIcon.x;
+    dragIcon.dragging = false;
+    dragIcon.floating = false;
+    dragIcon.settled = false;
+    dragIcon.vy = 0;
+    dragIcon = null;
+  }
+
+  // Attach listeners to each icon
+  iconEls.forEach(function(el) {
+    el.addEventListener('mousedown', onPointerDown);
+    el.addEventListener('touchstart', onPointerDown, { passive: false });
+
+    // Prevent default click so we handle navigation ourselves
+    el.addEventListener('click', function(e) {
+      e.preventDefault();
+    });
+  });
+
+  document.addEventListener('mousemove', onPointerMove);
+  document.addEventListener('touchmove', onPointerMove, { passive: false });
+  document.addEventListener('mouseup', onPointerUp);
+  document.addEventListener('touchend', onPointerUp);
+
+  // --- Main loop ---
+
   var lastTime = null;
 
   function tick(timestamp) {
     if (lastTime === null) { lastTime = timestamp; }
-    var dt = Math.min((timestamp - lastTime) / 1000, 0.05); // cap dt to avoid spiral
+    var dt = Math.min((timestamp - lastTime) / 1000, 0.05);
     lastTime = timestamp;
 
     var vw = window.innerWidth;
@@ -207,11 +313,14 @@
     // --- Update positions ---
     for (var i = 0; i < icons.length; i++) {
       var icon = icons[i];
-      // Sample the wave field at this icon's current x position
+
+      // Skip physics for dragged icon
+      if (icon.dragging) continue;
+
       var targetWaveY = oceanSurface + waveY(t, icon.x);
 
       if (!icon.floating) {
-        // Gravity phase — vertical only
+        // Gravity phase (drag-drop splash)
         icon.vy += GRAVITY * dt;
         icon.y += icon.vy * dt;
 
@@ -224,28 +333,27 @@
           }
         }
       } else {
-        // Floating phase — vertical follows wave at this x
+        // Floating phase — vertical follows wave
         icon.y += (targetWaveY - icon.y) * SETTLE_SPEED * dt;
         if (Math.abs(targetWaveY - icon.y) < 0.5) {
           icon.y = targetWaveY;
           icon.settled = true;
         }
 
-        // Horizontal: wave drift force at this x, plus spring back to base
+        // Horizontal: wave drift force + spring back to base
         var targetX = icon.baseX + waveDriftX(t, icon.x);
         var force = (targetX - icon.x) * WAVE_FORCE;
         icon.vx += force * dt;
-
-        // Water drag
         icon.vx -= icon.vx * DRAG * dt;
-
         icon.x += icon.vx * dt;
       }
     }
 
-    // --- Resolve collisions between icons ---
+    // --- Resolve collisions ---
     for (var i = 0; i < icons.length; i++) {
+      if (icons[i].dragging) continue;
       for (var j = i + 1; j < icons.length; j++) {
+        if (icons[j].dragging) continue;
         var a = icons[i], b = icons[j];
         var dx = b.x - a.x;
         var dy = b.y - a.y;
@@ -253,7 +361,6 @@
         var minDist = ICON_SIZE;
 
         if (dist < minDist && dist > 0.01) {
-          // Separate the icons
           var overlap = minDist - dist;
           var nx = dx / dist;
           var ny = dy / dist;
@@ -262,7 +369,6 @@
           b.x += nx * overlap * 0.5;
           b.y += ny * overlap * 0.5;
 
-          // Exchange velocity along collision axis
           var dvx = a.vx - b.vx;
           var impulse = dvx * nx * COLLISION_BOUNCE;
           a.vx -= impulse * nx;
@@ -275,17 +381,17 @@
     for (var i = 0; i < icons.length; i++) {
       var icon = icons[i];
 
-      // Bounce off screen edges
-      if (icon.x < ICON_MARGIN) {
-        icon.x = ICON_MARGIN;
-        icon.vx = Math.abs(icon.vx) * COLLISION_BOUNCE;
-      } else if (icon.x > vw - ICON_MARGIN) {
-        icon.x = vw - ICON_MARGIN;
-        icon.vx = -Math.abs(icon.vx) * COLLISION_BOUNCE;
+      if (!icon.dragging) {
+        if (icon.x < ICON_MARGIN) {
+          icon.x = ICON_MARGIN;
+          icon.vx = Math.abs(icon.vx) * COLLISION_BOUNCE;
+        } else if (icon.x > vw - ICON_MARGIN) {
+          icon.x = vw - ICON_MARGIN;
+          icon.vx = -Math.abs(icon.vx) * COLLISION_BOUNCE;
+        }
       }
 
-      // Tilt follows the wave slope at this icon's position
-      var rot = icon.floating ? waveSlope(t, icon.x) * ROCK_SCALE * (180 / Math.PI) : 0;
+      var rot = icon.floating && !icon.dragging ? waveSlope(t, icon.x) * ROCK_SCALE * (180 / Math.PI) : 0;
 
       icon.el.style.transform =
         'translate(' + (icon.x - 16) + 'px, ' + icon.y + 'px) rotate(' + rot + 'deg)';
